@@ -22,9 +22,11 @@ export default function SessionHeartbeat() {
 
   useEffect(() => {
     /*
-     * Login e telas públicas
-     * não precisam de heartbeat.
+     * =========================================================
+     * ROTAS QUE NÃO PRECISAM DE HEARTBEAT
+     * =========================================================
      */
+
     if (
       pathname.startsWith(
         "/login"
@@ -42,6 +44,9 @@ export default function SessionHeartbeat() {
     let active =
       true;
 
+    let loggingOut =
+      false;
+
     /*
      * =========================================================
      * HEARTBEAT
@@ -49,6 +54,13 @@ export default function SessionHeartbeat() {
      */
 
     async function heartbeat() {
+      if (
+        !active ||
+        loggingOut
+      ) {
+        return;
+      }
+
       try {
         const response =
           await fetch(
@@ -59,6 +71,9 @@ export default function SessionHeartbeat() {
 
               cache:
                 "no-store",
+
+              credentials:
+                "include",
             }
           );
 
@@ -70,8 +85,9 @@ export default function SessionHeartbeat() {
         }
 
         /*
-         * Sessão revogada,
-         * inexistente ou encerrada.
+         * 401 / 403 significa que a sessão
+         * realmente não existe mais ou foi
+         * derrubada pelo administrador.
          */
         if (
           response.status ===
@@ -79,8 +95,8 @@ export default function SessionHeartbeat() {
           response.status ===
             403
         ) {
-          active =
-            false;
+          loggingOut =
+            true;
 
           const supabase =
             createClient();
@@ -88,6 +104,10 @@ export default function SessionHeartbeat() {
           await supabase
             .auth
             .signOut();
+
+          if (!active) {
+            return;
+          }
 
           router.replace(
             "/login"
@@ -100,9 +120,8 @@ export default function SessionHeartbeat() {
         error
       ) {
         /*
-         * Não derruba o usuário
-         * somente porque a conexão
-         * caiu momentaneamente.
+         * Falha de internet NÃO deve
+         * deslogar o usuário.
          */
         console.error(
           "[HEARTBEAT]",
@@ -112,37 +131,12 @@ export default function SessionHeartbeat() {
     }
 
     /*
-     * =========================================================
-     * TENTA LIBERAR A TELA AO FECHAR
-     * =========================================================
-     */
-
-    function endSession() {
-      /*
-       * sendBeacon é próprio para
-       * chamadas feitas quando a
-       * página está sendo fechada.
-       */
-      try {
-        navigator.sendBeacon(
-          "/api/session/end"
-        );
-      } catch {
-        /*
-         * Se falhar, o timeout do
-         * servidor continua sendo
-         * nosso plano B.
-         */
-      }
-    }
-
-    /*
-     * Primeira checagem.
+     * Primeira verificação.
      */
     heartbeat();
 
     /*
-     * Depois a cada 30 segundos.
+     * Verifica a sessão a cada 30 segundos.
      */
     const timer =
       window.setInterval(
@@ -151,19 +145,20 @@ export default function SessionHeartbeat() {
       );
 
     /*
-     * pagehide costuma funcionar
-     * melhor que beforeunload em
-     * celulares.
+     * IMPORTANTE:
+     *
+     * Não usamos mais pagehide,
+     * beforeunload ou sendBeacon aqui.
+     *
+     * Fechar/recarregar a página não deve
+     * apagar a sessão acidentalmente.
+     *
+     * O botão "Sair" continua chamando
+     * /api/session/end normalmente.
+     *
+     * Sessões abandonadas somem pelo
+     * timeout de 5 minutos do servidor.
      */
-    window.addEventListener(
-      "pagehide",
-      endSession
-    );
-
-    window.addEventListener(
-      "beforeunload",
-      endSession
-    );
 
     return () => {
       active =
@@ -171,16 +166,6 @@ export default function SessionHeartbeat() {
 
       window.clearInterval(
         timer
-      );
-
-      window.removeEventListener(
-        "pagehide",
-        endSession
-      );
-
-      window.removeEventListener(
-        "beforeunload",
-        endSession
       );
     };
 
