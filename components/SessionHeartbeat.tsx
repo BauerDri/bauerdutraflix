@@ -21,12 +21,6 @@ export default function SessionHeartbeat() {
     useRouter();
 
   useEffect(() => {
-    /*
-     * =========================================================
-     * ROTAS QUE NÃƒO PRECISAM DE HEARTBEAT
-     * =========================================================
-     */
-
     if (
       pathname.startsWith(
         "/login"
@@ -46,12 +40,6 @@ export default function SessionHeartbeat() {
 
     let loggingOut =
       false;
-
-    /*
-     * =========================================================
-     * HEARTBEAT
-     * =========================================================
-     */
 
     async function heartbeat() {
       if (
@@ -85,9 +73,7 @@ export default function SessionHeartbeat() {
         }
 
         /*
-         * 401 / 403 significa que a sessÃ£o
-         * realmente nÃ£o existe mais ou foi
-         * derrubada pelo administrador.
+         * Sessão inexistente/revogada.
          */
         if (
           response.status ===
@@ -103,7 +89,10 @@ export default function SessionHeartbeat() {
 
           await supabase
             .auth
-            .signOut({ scope: "local" });
+            .signOut({
+              scope:
+                "local",
+            });
 
           if (!active) {
             return;
@@ -120,8 +109,8 @@ export default function SessionHeartbeat() {
         error
       ) {
         /*
-         * Falha de internet NÃƒO deve
-         * deslogar o usuÃ¡rio.
+         * Falha de internet não deve
+         * derrubar o usuário.
          */
         console.error(
           "[HEARTBEAT]",
@@ -130,35 +119,13 @@ export default function SessionHeartbeat() {
       }
     }
 
-    /*
-     * Primeira verificaÃ§Ã£o.
-     */
     heartbeat();
 
-    /*
-     * Verifica a sessÃ£o a cada 30 segundos.
-     */
     const timer =
       window.setInterval(
         heartbeat,
         30_000
       );
-
-    /*
-     * IMPORTANTE:
-     *
-     * NÃ£o usamos mais pagehide,
-     * beforeunload ou sendBeacon aqui.
-     *
-     * Fechar/recarregar a pÃ¡gina nÃ£o deve
-     * apagar a sessÃ£o acidentalmente.
-     *
-     * O botÃ£o "Sair" continua chamando
-     * /api/session/end normalmente.
-     *
-     * SessÃµes abandonadas somem pelo
-     * timeout de 5 minutos do servidor.
-     */
 
     return () => {
       active =

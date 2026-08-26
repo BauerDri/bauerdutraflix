@@ -67,11 +67,9 @@ export default function LoginPage() {
 
   useEffect(() => {
     const remembered =
-      window
-        .localStorage
-        .getItem(
-          REMEMBER_EMAIL_KEY
-        );
+      window.localStorage.getItem(
+        REMEMBER_EMAIL_KEY
+      );
 
     if (remembered) {
       setEmail(
@@ -87,9 +85,7 @@ export default function LoginPage() {
     event.preventDefault();
 
     setLoading(true);
-
     setError("");
-
     setMessage("");
 
     const supabase =
@@ -124,7 +120,9 @@ export default function LoginPage() {
           await supabase
             .auth
             .signUp({
-              email,
+              email:
+                email.trim(),
+
               password,
 
               options: {
@@ -138,6 +136,11 @@ export default function LoginPage() {
         if (
           signUpError
         ) {
+          console.error(
+            "[CADASTRO]",
+            signUpError.message
+          );
+
           setError(
             signUpError.message
           );
@@ -148,16 +151,14 @@ export default function LoginPage() {
         if (
           rememberEmail
         ) {
-          window
-            .localStorage
-            .setItem(
-              REMEMBER_EMAIL_KEY,
-              email.trim()
-            );
+          window.localStorage.setItem(
+            REMEMBER_EMAIL_KEY,
+            email.trim()
+          );
         }
 
         setMessage(
-          "Conta criada com sucesso. FaÃ§a login para continuar."
+          "Conta criada com sucesso. Faça login para continuar."
         );
 
         setMode(
@@ -171,24 +172,34 @@ export default function LoginPage() {
 
       /*
        * =====================================================
-       * LOGIN
+       * LOGIN SUPABASE
        * =====================================================
        */
 
       const {
+        data:
+          loginData,
+
         error:
           loginError,
       } =
         await supabase
           .auth
           .signInWithPassword({
-            email,
+            email:
+              email.trim(),
+
             password,
           });
 
       if (
         loginError
       ) {
+        console.error(
+          "[LOGIN AUTH]",
+          loginError.message
+        );
+
         setError(
           "E-mail ou senha incorretos."
         );
@@ -196,53 +207,177 @@ export default function LoginPage() {
         return;
       }
 
+      if (
+        !loginData.user ||
+        !loginData.session
+      ) {
+        console.error(
+          "[LOGIN AUTH] Supabase não retornou sessão válida."
+        );
+
+        setError(
+          "Não foi possível criar sua sessão de login."
+        );
+
+        return;
+      }
+
       /*
        * =====================================================
-       * CRIA SESSÃƒO DE TELA
+       * CRIA SESSÃO DE TELA
        * =====================================================
        */
 
-      const sessionResponse =
-        await fetch(
-          "/api/session/start",
-          {
-            method:
-              "POST",
+      let sessionResponse:
+        Response;
 
-            cache:
-              "no-store",
-          }
+      try {
+        sessionResponse =
+          await fetch(
+            "/api/session/start",
+            {
+              method:
+                "POST",
+
+              cache:
+                "no-store",
+
+              credentials:
+                "include",
+            }
+          );
+
+      } catch (
+        fetchError
+      ) {
+        console.error(
+          "[SESSION START FETCH]",
+          fetchError
         );
 
-      const sessionData =
+        setError(
+          "Não foi possível conectar ao controle de telas."
+        );
+
+        return;
+      }
+
+      /*
+       * Lemos como texto primeiro.
+       *
+       * Assim não quebramos caso a API
+       * devolva HTML, corpo vazio etc.
+       */
+      const rawSessionResponse =
         await sessionResponse
-          .json();
+          .text();
+
+      let sessionData:
+        Record<
+          string,
+          unknown
+        > = {};
+
+      if (
+        rawSessionResponse
+          .trim()
+      ) {
+        try {
+          sessionData =
+            JSON.parse(
+              rawSessionResponse
+            );
+
+        } catch {
+          console.error(
+            "[SESSION START] Resposta não-JSON:",
+            {
+              status:
+                sessionResponse.status,
+
+              preview:
+                rawSessionResponse
+                  .slice(
+                    0,
+                    200
+                  ),
+            }
+          );
+
+          await supabase
+            .auth
+            .signOut({
+              scope:
+                "local",
+            });
+
+          setError(
+            `Erro ao iniciar sessão (${sessionResponse.status}).`
+          );
+
+          return;
+        }
+      }
+
+      /*
+       * =====================================================
+       * ERRO AO INICIAR TELA
+       * =====================================================
+       */
 
       if (
         !sessionResponse.ok
       ) {
+        console.log(
+          "[SESSION START]",
+          {
+            status:
+              sessionResponse.status,
+
+            data:
+              sessionData,
+          }
+        );
+
         await supabase
           .auth
-          .signOut({ scope: "local" });
+          .signOut({
+            scope:
+              "local",
+          });
+
+        const reason =
+          typeof sessionData
+            .reason ===
+          "string"
+            ? sessionData.reason
+            : "";
 
         if (
-          sessionData.reason ===
+          reason ===
           "screen_limit"
         ) {
+          const maxScreens =
+            Number(
+              sessionData
+                .max_screens ??
+              1
+            );
+
           setError(
-            `Limite de telas atingido. Este plano permite ${sessionData.max_screens} ${
-              sessionData.max_screens ===
+            `Limite de telas atingido. Este plano permite ${maxScreens} ${
+              maxScreens ===
               1
                 ? "tela"
                 : "telas"
-            } simultÃ¢neas.`
+            } simultâneas.`
           );
 
           return;
         }
 
         if (
-          sessionData.reason ===
+          reason ===
           "expired"
         ) {
           router.replace(
@@ -253,7 +388,7 @@ export default function LoginPage() {
         }
 
         if (
-          sessionData.reason ===
+          reason ===
           "blocked"
         ) {
           router.replace(
@@ -263,31 +398,53 @@ export default function LoginPage() {
           return;
         }
 
+        if (
+          reason ===
+          "waiting" ||
+          reason ===
+          "pending"
+        ) {
+          router.replace(
+            "/acesso?motivo=aguardando"
+          );
+
+          return;
+        }
+
+        /*
+         * Agora mostramos o HTTP real.
+         *
+         * Se aparecer 500/401/403,
+         * saberemos exatamente onde olhar.
+         */
         setError(
-          "NÃ£o foi possÃ­vel iniciar sua sessÃ£o."
+          `Não foi possível iniciar sua sessão. Código ${sessionResponse.status}.`
         );
 
         return;
       }
 
+      /*
+       * =====================================================
+       * LOGIN CONCLUÍDO
+       * =====================================================
+       */
+
       if (
         rememberEmail
       ) {
-        window
-          .localStorage
-          .setItem(
-            REMEMBER_EMAIL_KEY,
-            email.trim()
-          );
+        window.localStorage.setItem(
+          REMEMBER_EMAIL_KEY,
+          email.trim()
+        );
+
       } else {
-        window
-          .localStorage
-          .removeItem(
-            REMEMBER_EMAIL_KEY
-          );
+        window.localStorage.removeItem(
+          REMEMBER_EMAIL_KEY
+        );
       }
 
-      router.push("/");
+      router.replace("/");
 
       router.refresh();
 
@@ -295,12 +452,15 @@ export default function LoginPage() {
       loginException
     ) {
       console.error(
-        "[LOGIN]",
+        "[LOGIN UNEXPECTED]",
         loginException
       );
 
       setError(
-        "NÃ£o foi possÃ­vel concluir a operaÃ§Ã£o."
+        loginException instanceof
+          Error
+          ? `Erro inesperado: ${loginException.message}`
+          : "Não foi possível concluir a operação."
       );
 
     } finally {
@@ -356,12 +516,19 @@ export default function LoginPage() {
       }
 
       setMessage(
-        "Se esse e-mail estiver cadastrado, vocÃª receberÃ¡ um link para redefinir sua senha."
+        "Se esse e-mail estiver cadastrado, você receberá um link para redefinir sua senha."
       );
 
-    } catch {
+    } catch (
+      resetException
+    ) {
+      console.error(
+        "[RESET PASSWORD]",
+        resetException
+      );
+
       setError(
-        "NÃ£o foi possÃ­vel solicitar a redefiniÃ§Ã£o de senha."
+        "Não foi possível solicitar a redefinição de senha."
       );
 
     } finally {
@@ -379,7 +546,6 @@ export default function LoginPage() {
     );
 
     setError("");
-
     setMessage("");
   }
 
@@ -522,7 +688,7 @@ export default function LoginPage() {
                     .value
                 )
               }
-              placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+              placeholder="••••••••"
               required
               minLength={6}
               autoComplete={
@@ -536,48 +702,46 @@ export default function LoginPage() {
 
           {mode ===
             "login" && (
-            <>
-              <div
-                className="auth-login-options"
+            <div
+              className="auth-login-options"
+            >
+              <label
+                className="auth-remember"
               >
-                <label
-                  className="auth-remember"
-                >
-                  <input
-                    type="checkbox"
-                    checked={
-                      rememberEmail
-                    }
-                    onChange={(
+                <input
+                  type="checkbox"
+                  checked={
+                    rememberEmail
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    setRememberEmail(
                       event
-                    ) =>
-                      setRememberEmail(
-                        event
-                          .target
-                          .checked
-                      )
-                    }
-                  />
-
-                  <span>
-                    Lembrar meu e-mail
-                  </span>
-                </label>
-
-                <button
-                  type="button"
-                  className="auth-forgot"
-                  onClick={
-                    forgotPassword
+                        .target
+                        .checked
+                    )
                   }
-                  disabled={
-                    loading
-                  }
-                >
-                  Esqueci minha senha
-                </button>
-              </div>
-            </>
+                />
+
+                <span>
+                  Lembrar meu e-mail
+                </span>
+              </label>
+
+              <button
+                type="button"
+                className="auth-forgot"
+                onClick={
+                  forgotPassword
+                }
+                disabled={
+                  loading
+                }
+              >
+                Esqueci minha senha
+              </button>
+            </div>
           )}
 
           {error && (
@@ -617,8 +781,8 @@ export default function LoginPage() {
         >
           {mode ===
           "login"
-            ? "Acesso exclusivo para usuÃ¡rios autorizados."
-            : "ApÃ³s o cadastro, seu acesso deverÃ¡ ser liberado."}
+            ? "Acesso exclusivo para usuários autorizados."
+            : "Após o cadastro, seu acesso deverá ser liberado."}
         </p>
       </section>
     </main>

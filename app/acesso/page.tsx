@@ -1,9 +1,13 @@
 ﻿"use client";
 
-import { useSearchParams } from "next/navigation";
-import { useRouter } from "next/navigation";
+import {
+  useSearchParams,
+  useRouter,
+} from "next/navigation";
 
-import { createClient } from "@/lib/supabase/client";
+import {
+  createClient,
+} from "@/lib/supabase/client";
 
 export default function AccessPage() {
   const search =
@@ -16,27 +20,26 @@ export default function AccessPage() {
     search.get("motivo");
 
   let title =
-    "Acesso indisponÃ­vel";
+    "Acesso indisponível";
 
   let message =
-    "NÃ£o foi possÃ­vel liberar seu acesso.";
+    "Não foi possível liberar seu acesso.";
 
-  /*
-   * Conta criada, mas ainda sem
-   * data de liberaÃ§Ã£o.
-   */
-  if (motivo === "aguardando") {
+  if (
+    motivo ===
+    "aguardando"
+  ) {
     title =
-      "Aguardando liberaÃ§Ã£o";
+      "Aguardando liberação";
 
     message =
       "Sua conta foi criada com sucesso, mas seu acesso ainda precisa ser liberado.";
   }
 
-  /*
-   * Acesso vencido.
-   */
-  if (motivo === "expirado") {
+  if (
+    motivo ===
+    "expirado"
+  ) {
     title =
       "Sua assinatura expirou";
 
@@ -44,16 +47,10 @@ export default function AccessPage() {
       "Renove seu acesso ao BauerDutraFlix para continuar assistindo.";
   }
 
-  /*
-   * Por enquanto mostramos a mesma
-   * tela de renovaÃ§Ã£o caso exista
-   * algum problema ao localizar
-   * o perfil.
-   *
-   * Depois vamos corrigir a causa
-   * disso no RLS do Supabase.
-   */
-  if (motivo === "sem-perfil") {
+  if (
+    motivo ===
+    "sem-perfil"
+  ) {
     title =
       "Sua assinatura expirou";
 
@@ -61,25 +58,23 @@ export default function AccessPage() {
       "Renove seu acesso ao BauerDutraFlix para continuar assistindo.";
   }
 
-  /*
-   * Conta bloqueada manualmente
-   * pelo administrador.
-   */
-  if (motivo === "bloqueado") {
+  if (
+    motivo ===
+    "bloqueado"
+  ) {
     title =
       "Conta bloqueada";
 
     message =
-      "Esta conta estÃ¡ bloqueada. Entre em contato para verificar seu acesso.";
+      "Esta conta está bloqueada. Entre em contato para verificar seu acesso.";
   }
 
-  /*
-   * Erro inesperado durante a
-   * validaÃ§Ã£o server-side.
-   */
-  if (motivo === "erro") {
+  if (
+    motivo ===
+    "erro"
+  ) {
     title =
-      "NÃ£o foi possÃ­vel verificar seu acesso";
+      "Não foi possível verificar seu acesso";
 
     message =
       "Ocorreu um problema ao verificar sua assinatura. Tente novamente ou entre em contato.";
@@ -89,19 +84,22 @@ export default function AccessPage() {
     const supabase =
       createClient();
 
-    await supabase.auth.signOut({ scope: "local" });
+    await supabase
+      .auth
+      .signOut({
+        scope:
+          "local",
+      });
 
-    router.push("/login");
+    router.replace(
+      "/login"
+    );
 
     router.refresh();
   }
 
-  /*
-   * Mensagem pronta que serÃ¡ aberta
-   * no WhatsApp.
-   */
   const whatsappMessage =
-    "OlÃ¡! Quero renovar meu acesso ao BauerDutraFlix.";
+    "Olá! Quero renovar meu acesso ao BauerDutraFlix.";
 
   const whatsappUrl =
     "https://wa.me/5521974252410" +
@@ -109,26 +107,49 @@ export default function AccessPage() {
       whatsappMessage
     )}`;
 
+  const blockedWhatsappUrl =
+    "https://wa.me/5521974252410" +
+    `?text=${encodeURIComponent(
+      "Olá! Minha conta BauerDutraFlix está bloqueada e gostaria de verificar meu acesso."
+    )}`;
+
   return (
-    <main className="access-page">
-      <section className="access-card">
-        <div className="auth-logo">
+    <main
+      className="access-page"
+    >
+      <section
+        className="access-card"
+      >
+        <div
+          className="auth-logo"
+        >
           BauerDutra
-          <span>Flix</span>
+          <span>
+            Flix
+          </span>
         </div>
 
-        <div className="access-icon">
-          ðŸ”’
+        <div
+          className="access-icon"
+        >
+          🔒
         </div>
 
-        <h1>{title}</h1>
+        <h1>
+          {title}
+        </h1>
 
-        <p>{message}</p>
+        <p>
+          {message}
+        </p>
 
-        {motivo !== "bloqueado" && (
+        {motivo !==
+          "bloqueado" && (
           <a
             className="access-whatsapp"
-            href={whatsappUrl}
+            href={
+              whatsappUrl
+            }
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -136,14 +157,12 @@ export default function AccessPage() {
           </a>
         )}
 
-        {motivo === "bloqueado" && (
+        {motivo ===
+          "bloqueado" && (
           <a
             className="access-whatsapp"
             href={
-              "https://wa.me/5521974252410" +
-              `?text=${encodeURIComponent(
-                "OlÃ¡! Minha conta BauerDutraFlix estÃ¡ bloqueada e gostaria de verificar meu acesso."
-              )}`
+              blockedWhatsappUrl
             }
             target="_blank"
             rel="noopener noreferrer"
@@ -154,7 +173,9 @@ export default function AccessPage() {
 
         <button
           type="button"
-          onClick={logout}
+          onClick={
+            logout
+          }
         >
           Sair da conta
         </button>
