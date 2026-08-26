@@ -441,7 +441,8 @@ export default function Navbar() {
   ] = useState(false);
 
   const visibleMenuItems: MenuItem[] =
-    profileRole === "admin"
+    profileRole ===
+    "admin"
       ? [
           ...menuItems,
 
@@ -604,6 +605,10 @@ export default function Navbar() {
       createClient();
 
     try {
+      /*
+       * Primeiro libera APENAS a tela atual
+       * no nosso controle de sessões.
+       */
       const sessionResponse =
         await fetch(
           "/api/session/end",
@@ -613,35 +618,46 @@ export default function Navbar() {
 
             cache:
               "no-store",
+
+            credentials:
+              "include",
           }
         );
 
       if (
         !sessionResponse.ok
       ) {
-        let result:
-          unknown =
-          null;
-
-        try {
-          result =
-            await sessionResponse
-              .json();
-
-        } catch {
-          result =
-            "Resposta inválida";
-        }
-
         console.error(
-          "[LOGOUT] Não foi possível liberar a tela:",
-          result
+          "[LOGOUT] Não foi possível liberar a tela."
         );
       }
 
-      await supabase
-        .auth
-        .signOut();
+      /*
+       * MUITO IMPORTANTE:
+       *
+       * scope local = encerra somente
+       * esta sessão deste navegador.
+       *
+       * Não revoga celular, PC, tablet etc.
+       */
+      const {
+        error:
+          signOutError,
+      } =
+        await supabase
+          .auth
+          .signOut({
+            scope:
+              "local",
+          });
+
+      if (
+        signOutError
+      ) {
+        console.error(
+          "[LOGOUT] Não foi possível encerrar a sessão local."
+        );
+      }
 
       setMobileOpen(
         false
@@ -653,21 +669,22 @@ export default function Navbar() {
 
       router.refresh();
 
-    } catch (
-      error
-    ) {
-      console.error(
-        "[LOGOUT]",
-        error
-      );
-
+    } catch {
+      /*
+       * Mesmo se nosso endpoint falhar,
+       * tentamos limpar somente esta
+       * sessão local.
+       */
       try {
         await supabase
           .auth
-          .signOut();
+          .signOut({
+            scope:
+              "local",
+          });
 
       } catch {
-        // ignora
+        // nada
       }
 
       router.replace(

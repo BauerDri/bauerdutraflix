@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
@@ -16,18 +16,18 @@ export default function AccessPage() {
     search.get("motivo");
 
   let title =
-    "Acesso indisponível";
+    "Acesso indisponÃ­vel";
 
   let message =
-    "Não foi possível liberar seu acesso.";
+    "NÃ£o foi possÃ­vel liberar seu acesso.";
 
   /*
    * Conta criada, mas ainda sem
-   * data de liberação.
+   * data de liberaÃ§Ã£o.
    */
   if (motivo === "aguardando") {
     title =
-      "Aguardando liberação";
+      "Aguardando liberaÃ§Ã£o";
 
     message =
       "Sua conta foi criada com sucesso, mas seu acesso ainda precisa ser liberado.";
@@ -46,7 +46,7 @@ export default function AccessPage() {
 
   /*
    * Por enquanto mostramos a mesma
-   * tela de renovação caso exista
+   * tela de renovaÃ§Ã£o caso exista
    * algum problema ao localizar
    * o perfil.
    *
@@ -70,16 +70,16 @@ export default function AccessPage() {
       "Conta bloqueada";
 
     message =
-      "Esta conta está bloqueada. Entre em contato para verificar seu acesso.";
+      "Esta conta estÃ¡ bloqueada. Entre em contato para verificar seu acesso.";
   }
 
   /*
    * Erro inesperado durante a
-   * validação server-side.
+   * validaÃ§Ã£o server-side.
    */
   if (motivo === "erro") {
     title =
-      "Não foi possível verificar seu acesso";
+      "NÃ£o foi possÃ­vel verificar seu acesso";
 
     message =
       "Ocorreu um problema ao verificar sua assinatura. Tente novamente ou entre em contato.";
@@ -89,7 +89,7 @@ export default function AccessPage() {
     const supabase =
       createClient();
 
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: "local" });
 
     router.push("/login");
 
@@ -97,11 +97,11 @@ export default function AccessPage() {
   }
 
   /*
-   * Mensagem pronta que será aberta
+   * Mensagem pronta que serÃ¡ aberta
    * no WhatsApp.
    */
   const whatsappMessage =
-    "Olá! Quero renovar meu acesso ao BauerDutraFlix.";
+    "OlÃ¡! Quero renovar meu acesso ao BauerDutraFlix.";
 
   const whatsappUrl =
     "https://wa.me/5521974252410" +
@@ -118,7 +118,7 @@ export default function AccessPage() {
         </div>
 
         <div className="access-icon">
-          🔒
+          ðŸ”’
         </div>
 
         <h1>{title}</h1>
@@ -142,7 +142,7 @@ export default function AccessPage() {
             href={
               "https://wa.me/5521974252410" +
               `?text=${encodeURIComponent(
-                "Olá! Minha conta BauerDutraFlix está bloqueada e gostaria de verificar meu acesso."
+                "OlÃ¡! Minha conta BauerDutraFlix estÃ¡ bloqueada e gostaria de verificar meu acesso."
               )}`
             }
             target="_blank"

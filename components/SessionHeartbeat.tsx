@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   useEffect,
@@ -23,7 +23,7 @@ export default function SessionHeartbeat() {
   useEffect(() => {
     /*
      * =========================================================
-     * ROTAS QUE NÃO PRECISAM DE HEARTBEAT
+     * ROTAS QUE NÃƒO PRECISAM DE HEARTBEAT
      * =========================================================
      */
 
@@ -85,8 +85,8 @@ export default function SessionHeartbeat() {
         }
 
         /*
-         * 401 / 403 significa que a sessão
-         * realmente não existe mais ou foi
+         * 401 / 403 significa que a sessÃ£o
+         * realmente nÃ£o existe mais ou foi
          * derrubada pelo administrador.
          */
         if (
@@ -103,7 +103,7 @@ export default function SessionHeartbeat() {
 
           await supabase
             .auth
-            .signOut();
+            .signOut({ scope: "local" });
 
           if (!active) {
             return;
@@ -120,8 +120,8 @@ export default function SessionHeartbeat() {
         error
       ) {
         /*
-         * Falha de internet NÃO deve
-         * deslogar o usuário.
+         * Falha de internet NÃƒO deve
+         * deslogar o usuÃ¡rio.
          */
         console.error(
           "[HEARTBEAT]",
@@ -131,12 +131,12 @@ export default function SessionHeartbeat() {
     }
 
     /*
-     * Primeira verificação.
+     * Primeira verificaÃ§Ã£o.
      */
     heartbeat();
 
     /*
-     * Verifica a sessão a cada 30 segundos.
+     * Verifica a sessÃ£o a cada 30 segundos.
      */
     const timer =
       window.setInterval(
@@ -147,16 +147,16 @@ export default function SessionHeartbeat() {
     /*
      * IMPORTANTE:
      *
-     * Não usamos mais pagehide,
+     * NÃ£o usamos mais pagehide,
      * beforeunload ou sendBeacon aqui.
      *
-     * Fechar/recarregar a página não deve
-     * apagar a sessão acidentalmente.
+     * Fechar/recarregar a pÃ¡gina nÃ£o deve
+     * apagar a sessÃ£o acidentalmente.
      *
-     * O botão "Sair" continua chamando
+     * O botÃ£o "Sair" continua chamando
      * /api/session/end normalmente.
      *
-     * Sessões abandonadas somem pelo
+     * SessÃµes abandonadas somem pelo
      * timeout de 5 minutos do servidor.
      */
 

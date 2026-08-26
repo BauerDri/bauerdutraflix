@@ -4,66 +4,62 @@ import {
   createClient,
 } from "@supabase/supabase-js";
 
-/*
- * ============================================================
- * CARREGA O .env.local
- * ============================================================
- */
-
 dotenv.config({
   path: ".env.local",
 });
 
 
+/* ============================================================
+   CONFIGURAÇÃO
+   ============================================================ */
+
 const SUPERFLIX_API =
   process.env.SUPERFLIX_API ||
   "https://superflixapi.pro";
-
 
 const SUPABASE_URL =
   process.env
     .NEXT_PUBLIC_SUPABASE_URL;
 
-
 const SUPABASE_SECRET_KEY =
   process.env
     .SUPABASE_SECRET_KEY;
 
+const TMDB_KEY =
+  process.env.TMDB_KEY ||
+  process.env.NEXT_PUBLIC_TMDB_KEY;
 
-/*
- * ============================================================
- * VALIDA VARIÁVEIS
- * ============================================================
- */
+
+/* ============================================================
+   VALIDAÇÃO
+   ============================================================ */
 
 if (!SUPABASE_URL) {
   console.error(
-    "❌ NEXT_PUBLIC_SUPABASE_URL não encontrada no .env.local."
+    "❌ NEXT_PUBLIC_SUPABASE_URL não encontrada."
   );
 
   process.exit(1);
 }
-
 
 if (!SUPABASE_SECRET_KEY) {
   console.error(
-    "❌ SUPABASE_SECRET_KEY não encontrada no .env.local."
+    "❌ SUPABASE_SECRET_KEY não encontrada."
   );
 
   process.exit(1);
 }
 
+if (!TMDB_KEY) {
+  console.warn(
+    "⚠️ TMDB_KEY não encontrada. Novidades serão mostradas apenas pelo ID."
+  );
+}
 
-console.log(
-  "✅ Variáveis do Supabase carregadas."
-);
 
-
-/*
- * ============================================================
- * CLIENTE SUPABASE ADMIN
- * ============================================================
- */
+/* ============================================================
+   SUPABASE
+   ============================================================ */
 
 const supabase =
   createClient(
@@ -71,23 +67,91 @@ const supabase =
     SUPABASE_SECRET_KEY,
     {
       auth: {
-        persistSession:
-          false,
-
-        autoRefreshToken:
-          false,
+        persistSession: false,
+        autoRefreshToken: false,
       },
     }
   );
 
 
-/*
- * ============================================================
- * BUSCA IDS NA SUPERFLIX
- * ============================================================
- */
+/* ============================================================
+   UTILIDADES
+   ============================================================ */
 
-async function fetchIds(
+function formatNumber(value) {
+  return new Intl
+    .NumberFormat(
+      "pt-BR"
+    )
+    .format(
+      value
+    );
+}
+
+function sleep(ms) {
+  return new Promise(
+    (resolve) =>
+      setTimeout(
+        resolve,
+        ms
+      )
+  );
+}
+
+
+/* ============================================================
+   LÊ CATÁLOGO ATUAL
+   ============================================================ */
+
+async function getCurrentIds(
+  category
+) {
+  const {
+    data,
+    error,
+  } =
+    await supabase
+      .from(
+        "catalog_cache"
+      )
+      .select("ids")
+      .eq(
+        "category",
+        category
+      )
+      .maybeSingle();
+
+  if (error) {
+    throw new Error(
+      `Erro lendo catálogo atual: ${error.message}`
+    );
+  }
+
+  if (
+    !data ||
+    !Array.isArray(
+      data.ids
+    )
+  ) {
+    return [];
+  }
+
+  return data.ids
+    .map(
+      (value) =>
+        Number(value)
+    )
+    .filter(
+      Number.isFinite
+    );
+}
+
+
+/* ============================================================
+   CONSULTA SUPERFLIX
+   ============================================================ */
+
+async function fetchSuperflixIds(
   category
 ) {
   const url =
@@ -97,11 +161,9 @@ async function fetchIds(
     `&format=json` +
     `&order=desc`;
 
-
   console.log(
-    `\n🔎 Consultando ${category}...`
+    "🔎 Consultando SuperFlix..."
   );
-
 
   const response =
     await fetch(
@@ -109,11 +171,10 @@ async function fetchIds(
       {
         signal:
           AbortSignal.timeout(
-            15000
+            20000
           ),
       }
     );
-
 
   if (!response.ok) {
     throw new Error(
@@ -121,10 +182,8 @@ async function fetchIds(
     );
   }
 
-
   const data =
     await response.json();
-
 
   if (
     !Array.isArray(
@@ -132,38 +191,189 @@ async function fetchIds(
     )
   ) {
     throw new Error(
-      "A SuperFlix retornou um formato inesperado."
+      "Resposta inesperada da SuperFlix."
     );
   }
 
-
-  const ids =
-    data
-      .map(
-        (value) =>
-          Number(value)
-      )
-      .filter(
-        Number.isFinite
-      );
-
-
-  console.log(
-    `📦 ${ids.length} IDs recebidos.`
-  );
-
-
-  return ids;
+  return data
+    .map(
+      (value) =>
+        Number(value)
+    )
+    .filter(
+      Number.isFinite
+    );
 }
 
 
-/*
- * ============================================================
- * SALVA NO SUPABASE
- * ============================================================
- */
+/* ============================================================
+   COMPARAÇÃO
+   ============================================================ */
 
-async function save(
+function findNewIds(
+  oldIds,
+  newIds
+) {
+  const oldSet =
+    new Set(
+      oldIds
+    );
+
+  return newIds.filter(
+    (id) =>
+      !oldSet.has(
+        id
+      )
+  );
+}
+
+function findRemovedIds(
+  oldIds,
+  newIds
+) {
+  const newSet =
+    new Set(
+      newIds
+    );
+
+  return oldIds.filter(
+    (id) =>
+      !newSet.has(
+        id
+      )
+  );
+}
+
+
+/* ============================================================
+   TMDB - NOME DOS TÍTULOS
+   ============================================================ */
+
+async function getTmdbTitle(
+  category,
+  id
+) {
+  if (!TMDB_KEY) {
+    return null;
+  }
+
+  const tmdbType =
+    category === "filme"
+      ? "movie"
+      : "tv";
+
+  const url =
+    `https://api.themoviedb.org/3/${tmdbType}/${id}` +
+    `?api_key=${encodeURIComponent(TMDbKeySafe())}` +
+    `&language=pt-BR`;
+
+  try {
+    const response =
+      await fetch(
+        url,
+        {
+          signal:
+            AbortSignal.timeout(
+              10000
+            ),
+        }
+      );
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data =
+      await response.json();
+
+    return (
+      data.title ||
+      data.name ||
+      data.original_title ||
+      data.original_name ||
+      null
+    );
+
+  } catch {
+    return null;
+  }
+}
+
+function TMDbKeySafe() {
+  return TMDB_KEY;
+}
+
+
+/* ============================================================
+   MOSTRA NOVIDADES
+   ============================================================ */
+
+async function printNewItems(
+  category,
+  ids
+) {
+  if (
+    ids.length ===
+    0
+  ) {
+    console.log(
+      "✨ Nenhuma novidade desde a última sincronização."
+    );
+
+    return;
+  }
+
+  console.log(
+    `\n🆕 ${ids.length} ${
+      category === "filme"
+        ? ids.length === 1
+          ? "filme novo"
+          : "filmes novos"
+        : ids.length === 1
+          ? "série nova"
+          : "séries novas"
+    }:`
+  );
+
+  for (
+    let index = 0;
+    index < ids.length;
+    index++
+  ) {
+    const id =
+      ids[index];
+
+    const title =
+      await getTmdbTitle(
+        category,
+        id
+      );
+
+    console.log(
+      `   + ${id}${
+        title
+          ? ` • ${title}`
+          : ""
+      }`
+    );
+
+    if (
+      index <
+      ids.length - 1
+    ) {
+      await sleep(
+        80
+      );
+    }
+  }
+}
+
+
+/* ============================================================
+   SALVA CATÁLOGO
+   ============================================================ */
+
+async function saveCatalog(
   category,
   ids
 ) {
@@ -177,9 +387,7 @@ async function save(
       .upsert(
         {
           category,
-
           ids,
-
           updated_at:
             new Date()
               .toISOString(),
@@ -190,25 +398,118 @@ async function save(
         }
       );
 
-
   if (error) {
     throw new Error(
       `Supabase: ${error.message}`
     );
   }
-
-
-  console.log(
-    `✅ ${category}: ${ids.length} IDs salvos no Supabase.`
-  );
 }
 
 
-/*
- * ============================================================
- * SINCRONIZAÇÃO
- * ============================================================
- */
+/* ============================================================
+   SINCRONIZA UMA CATEGORIA
+   ============================================================ */
+
+async function syncCategory(
+  category
+) {
+  const label =
+    category === "filme"
+      ? "🎬 FILMES"
+      : "📺 SÉRIES";
+
+  console.log(
+    "\n------------------------------------------"
+  );
+
+  console.log(
+    label
+  );
+
+  console.log(
+    "------------------------------------------"
+  );
+
+  const oldIds =
+    await getCurrentIds(
+      category
+    );
+
+  console.log(
+    `💾 Salvos anteriormente: ${formatNumber(
+      oldIds.length
+    )}`
+  );
+
+  const newIds =
+    await fetchSuperflixIds(
+      category
+    );
+
+  console.log(
+    `📦 Catálogo atual: ${formatNumber(
+      newIds.length
+    )}`
+  );
+
+  const added =
+    findNewIds(
+      oldIds,
+      newIds
+    );
+
+  const removed =
+    findRemovedIds(
+      oldIds,
+      newIds
+    );
+
+  await printNewItems(
+    category,
+    added
+  );
+
+  if (
+    removed.length >
+    0
+  ) {
+    console.log(
+      `\n🗑️ ${removed.length} ${
+        removed.length === 1
+          ? "título saiu"
+          : "títulos saíram"
+      } do catálogo.`
+    );
+  }
+
+  await saveCatalog(
+    category,
+    newIds
+  );
+
+  console.log(
+    `\n✅ ${
+      category === "filme"
+        ? "Filmes"
+        : "Séries"
+    } atualizado no Supabase.`
+  );
+
+  return {
+    success: true,
+    total:
+      newIds.length,
+    added:
+      added.length,
+    removed:
+      removed.length,
+  };
+}
+
+
+/* ============================================================
+   SINCRONIZAÇÃO COMPLETA
+   ============================================================ */
 
 async function sync() {
   console.log(
@@ -216,7 +517,7 @@ async function sync() {
   );
 
   console.log(
-    "🎬 BAUERDUTRAFLIX • SYNC SUPERFLIX"
+    "🎬 BAUERDUTRAFLIX • ATUALIZAÇÃO DE CATÁLOGO"
   );
 
   console.log(
@@ -230,24 +531,38 @@ async function sync() {
     "=========================================="
   );
 
+  let hadError =
+    false;
+
+  let movieResult = {
+    success: false,
+    total: 0,
+    added: 0,
+    removed: 0,
+  };
+
+  let seriesResult = {
+    success: false,
+    total: 0,
+    added: 0,
+    removed: 0,
+  };
+
 
   try {
-    const filmes =
-      await fetchIds(
+    movieResult =
+      await syncCategory(
         "filme"
       );
-
-
-    await save(
-      "filme",
-      filmes
-    );
 
   } catch (
     error
   ) {
+    hadError =
+      true;
+
     console.error(
-      "❌ Erro sincronizando filmes:",
+      "\n❌ Erro em filmes:",
       error instanceof Error
         ? error.message
         : error
@@ -256,51 +571,124 @@ async function sync() {
 
 
   try {
-    const series =
-      await fetchIds(
+    seriesResult =
+      await syncCategory(
         "serie"
       );
-
-
-    await save(
-      "serie",
-      series
-    );
 
   } catch (
     error
   ) {
+    hadError =
+      true;
+
     console.error(
-      "❌ Erro sincronizando séries:",
+      "\n❌ Erro em séries:",
       error instanceof Error
         ? error.message
         : error
     );
+  }
+
+
+  const totalAdded =
+    movieResult.added +
+    seriesResult.added;
+
+  const totalRemoved =
+    movieResult.removed +
+    seriesResult.removed;
+
+
+  console.log(
+    "\n=========================================="
+  );
+
+  console.log(
+    "📊 RESUMO"
+  );
+
+  console.log(
+    "=========================================="
+  );
+
+  if (
+    movieResult.success
+  ) {
+    console.log(
+      `🎬 Filmes: ${formatNumber(
+        movieResult.total
+      )}`
+    );
+  } else {
+    console.log(
+      "🎬 Filmes: ERRO"
+    );
+  }
+
+  if (
+    seriesResult.success
+  ) {
+    console.log(
+      `📺 Séries: ${formatNumber(
+        seriesResult.total
+      )}`
+    );
+  } else {
+    console.log(
+      "📺 Séries: ERRO"
+    );
+  }
+
+  console.log(
+    `🆕 Novidades: ${formatNumber(
+      totalAdded
+    )}`
+  );
+
+  console.log(
+    `🗑️ Removidos: ${formatNumber(
+      totalRemoved
+    )}`
+  );
+
+
+  if (
+    totalAdded ===
+      0 &&
+    !hadError
+  ) {
+    console.log(
+      "✨ Catálogo já estava totalmente atualizado."
+    );
+  }
+
+
+  if (
+    hadError
+  ) {
+    console.log(
+      "\n❌ Sincronização concluída COM ERROS."
+    );
+
+    process.exitCode =
+      1;
+
+    return;
   }
 
 
   console.log(
-    "\n⏳ Próxima atualização em 10 minutos."
+    "\n✅ Sincronização concluída com sucesso."
   );
+
+  process.exitCode =
+    0;
 }
 
 
-/*
- * ============================================================
- * PRIMEIRA EXECUÇÃO
- * ============================================================
- */
+/* ============================================================
+   EXECUTA E ENCERRA
+   ============================================================ */
 
 await sync();
-
-
-/*
- * ============================================================
- * REPETE A CADA 10 MINUTOS
- * ============================================================
- */
-
-setInterval(
-  sync,
-  10 * 60 * 1000
-);

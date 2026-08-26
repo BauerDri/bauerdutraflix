@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   FormEvent,
@@ -157,7 +157,7 @@ export default function LoginPage() {
         }
 
         setMessage(
-          "Conta criada com sucesso. Faça login para continuar."
+          "Conta criada com sucesso. FaÃ§a login para continuar."
         );
 
         setMode(
@@ -198,7 +198,7 @@ export default function LoginPage() {
 
       /*
        * =====================================================
-       * CRIA SESSÃO DE TELA
+       * CRIA SESSÃƒO DE TELA
        * =====================================================
        */
 
@@ -223,7 +223,7 @@ export default function LoginPage() {
       ) {
         await supabase
           .auth
-          .signOut();
+          .signOut({ scope: "local" });
 
         if (
           sessionData.reason ===
@@ -235,7 +235,7 @@ export default function LoginPage() {
               1
                 ? "tela"
                 : "telas"
-            } simultâneas.`
+            } simultÃ¢neas.`
           );
 
           return;
@@ -264,7 +264,7 @@ export default function LoginPage() {
         }
 
         setError(
-          "Não foi possível iniciar sua sessão."
+          "NÃ£o foi possÃ­vel iniciar sua sessÃ£o."
         );
 
         return;
@@ -300,7 +300,7 @@ export default function LoginPage() {
       );
 
       setError(
-        "Não foi possível concluir a operação."
+        "NÃ£o foi possÃ­vel concluir a operaÃ§Ã£o."
       );
 
     } finally {
@@ -356,12 +356,12 @@ export default function LoginPage() {
       }
 
       setMessage(
-        "Se esse e-mail estiver cadastrado, você receberá um link para redefinir sua senha."
+        "Se esse e-mail estiver cadastrado, vocÃª receberÃ¡ um link para redefinir sua senha."
       );
 
     } catch {
       setError(
-        "Não foi possível solicitar a redefinição de senha."
+        "NÃ£o foi possÃ­vel solicitar a redefiniÃ§Ã£o de senha."
       );
 
     } finally {
@@ -522,7 +522,7 @@ export default function LoginPage() {
                     .value
                 )
               }
-              placeholder="••••••••"
+              placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
               required
               minLength={6}
               autoComplete={
@@ -617,8 +617,8 @@ export default function LoginPage() {
         >
           {mode ===
           "login"
-            ? "Acesso exclusivo para usuários autorizados."
-            : "Após o cadastro, seu acesso deverá ser liberado."}
+            ? "Acesso exclusivo para usuÃ¡rios autorizados."
+            : "ApÃ³s o cadastro, seu acesso deverÃ¡ ser liberado."}
         </p>
       </section>
     </main>
