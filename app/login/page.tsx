@@ -33,50 +33,96 @@ export default function LoginPage() {
   const [
     name,
     setName,
-  ] = useState("");
+  ] =
+    useState("");
 
   const [
     email,
     setEmail,
-  ] = useState("");
+  ] =
+    useState("");
 
   const [
     password,
     setPassword,
-  ] = useState("");
+  ] =
+    useState("");
 
   const [
     rememberEmail,
     setRememberEmail,
-  ] = useState(true);
+  ] =
+    useState(true);
 
   const [
     loading,
     setLoading,
-  ] = useState(false);
+  ] =
+    useState(false);
 
   const [
     message,
     setMessage,
-  ] = useState("");
+  ] =
+    useState("");
 
   const [
     error,
     setError,
-  ] = useState("");
+  ] =
+    useState("");
+
+  /*
+   * =========================================================
+   * WHATSAPP - TESTE GRÁTIS
+   * =========================================================
+   *
+   * Essa mensagem é diferente da renovação.
+   *
+   * Assim você sabe imediatamente se a pessoa
+   * está pedindo um teste ou renovando acesso.
+   */
+
+  const trialWhatsappMessage =
+    "Olá! Quero solicitar um teste grátis de 24 horas do BauerDutraFlix.";
+
+  const trialWhatsappUrl =
+    "https://wa.me/5521974252410" +
+    `?text=${encodeURIComponent(
+      trialWhatsappMessage
+    )}`;
+
+
+  /*
+   * =========================================================
+   * LEMBRAR E-MAIL
+   * =========================================================
+   */
 
   useEffect(() => {
     const remembered =
-      window.localStorage.getItem(
-        REMEMBER_EMAIL_KEY
-      );
+      window
+        .localStorage
+        .getItem(
+          REMEMBER_EMAIL_KEY
+        );
 
-    if (remembered) {
+    if (
+      remembered
+    ) {
       setEmail(
         remembered
       );
     }
+
   }, []);
+
+
+  /*
+   * =========================================================
+   * LOGIN / CADASTRO
+   * =========================================================
+   */
 
   async function handleSubmit(
     event:
@@ -84,14 +130,19 @@ export default function LoginPage() {
   ) {
     event.preventDefault();
 
-    setLoading(true);
+    setLoading(
+      true
+    );
+
     setError("");
+
     setMessage("");
 
     const supabase =
       createClient();
 
     try {
+
       /*
        * =====================================================
        * CADASTRO
@@ -151,10 +202,12 @@ export default function LoginPage() {
         if (
           rememberEmail
         ) {
-          window.localStorage.setItem(
-            REMEMBER_EMAIL_KEY,
-            email.trim()
-          );
+          window
+            .localStorage
+            .setItem(
+              REMEMBER_EMAIL_KEY,
+              email.trim()
+            );
         }
 
         setMessage(
@@ -169,6 +222,7 @@ export default function LoginPage() {
 
         return;
       }
+
 
       /*
        * =====================================================
@@ -222,6 +276,7 @@ export default function LoginPage() {
         return;
       }
 
+
       /*
        * =====================================================
        * CRIA SESSÃO DE TELA
@@ -262,12 +317,14 @@ export default function LoginPage() {
         return;
       }
 
+
       /*
-       * Lemos como texto primeiro.
+       * Lemos primeiro como texto.
        *
-       * Assim não quebramos caso a API
-       * devolva HTML, corpo vazio etc.
+       * Isso evita quebrar caso algum
+       * endpoint devolva HTML ou corpo vazio.
        */
+
       const rawSessionResponse =
         await sessionResponse
           .text();
@@ -319,6 +376,7 @@ export default function LoginPage() {
         }
       }
 
+
       /*
        * =====================================================
        * ERRO AO INICIAR TELA
@@ -328,17 +386,6 @@ export default function LoginPage() {
       if (
         !sessionResponse.ok
       ) {
-        console.log(
-          "[SESSION START]",
-          {
-            status:
-              sessionResponse.status,
-
-            data:
-              sessionData,
-          }
-        );
-
         await supabase
           .auth
           .signOut({
@@ -400,9 +447,9 @@ export default function LoginPage() {
 
         if (
           reason ===
-          "waiting" ||
+            "waiting" ||
           reason ===
-          "pending"
+            "pending"
         ) {
           router.replace(
             "/acesso?motivo=aguardando"
@@ -411,18 +458,13 @@ export default function LoginPage() {
           return;
         }
 
-        /*
-         * Agora mostramos o HTTP real.
-         *
-         * Se aparecer 500/401/403,
-         * saberemos exatamente onde olhar.
-         */
         setError(
           `Não foi possível iniciar sua sessão. Código ${sessionResponse.status}.`
         );
 
         return;
       }
+
 
       /*
        * =====================================================
@@ -433,18 +475,24 @@ export default function LoginPage() {
       if (
         rememberEmail
       ) {
-        window.localStorage.setItem(
-          REMEMBER_EMAIL_KEY,
-          email.trim()
-        );
+        window
+          .localStorage
+          .setItem(
+            REMEMBER_EMAIL_KEY,
+            email.trim()
+          );
 
       } else {
-        window.localStorage.removeItem(
-          REMEMBER_EMAIL_KEY
-        );
+        window
+          .localStorage
+          .removeItem(
+            REMEMBER_EMAIL_KEY
+          );
       }
 
-      router.replace("/");
+      router.replace(
+        "/"
+      );
 
       router.refresh();
 
@@ -470,14 +518,24 @@ export default function LoginPage() {
     }
   }
 
+
+  /*
+   * =========================================================
+   * ESQUECI MINHA SENHA
+   * =========================================================
+   */
+
   async function forgotPassword() {
     const value =
       email.trim();
 
     setError("");
+
     setMessage("");
 
-    if (!value) {
+    if (
+      !value
+    ) {
       setError(
         "Digite seu e-mail primeiro."
       );
@@ -485,7 +543,9 @@ export default function LoginPage() {
       return;
     }
 
-    setLoading(true);
+    setLoading(
+      true
+    );
 
     try {
       const supabase =
@@ -532,9 +592,18 @@ export default function LoginPage() {
       );
 
     } finally {
-      setLoading(false);
+      setLoading(
+        false
+      );
     }
   }
+
+
+  /*
+   * =========================================================
+   * ALTERA LOGIN / CADASTRO
+   * =========================================================
+   */
 
   function changeMode(
     newMode:
@@ -546,8 +615,16 @@ export default function LoginPage() {
     );
 
     setError("");
+
     setMessage("");
   }
+
+
+  /*
+   * =========================================================
+   * INTERFACE
+   * =========================================================
+   */
 
   return (
     <main
@@ -568,6 +645,7 @@ export default function LoginPage() {
           className="auth-logo"
         >
           BauerDutra
+
           <span>
             Flix
           </span>
@@ -581,6 +659,11 @@ export default function LoginPage() {
             ? "Entre para continuar assistindo"
             : "Crie sua conta"}
         </p>
+
+
+        {/* ==================================================
+            ABAS
+           ================================================== */}
 
         <div
           className="auth-tabs"
@@ -620,6 +703,11 @@ export default function LoginPage() {
           </button>
         </div>
 
+
+        {/* ==================================================
+            FORMULÁRIO
+           ================================================== */}
+
         <form
           onSubmit={
             handleSubmit
@@ -633,7 +721,9 @@ export default function LoginPage() {
 
               <input
                 type="text"
-                value={name}
+                value={
+                  name
+                }
                 onChange={(
                   event
                 ) =>
@@ -655,7 +745,9 @@ export default function LoginPage() {
 
             <input
               type="email"
-              value={email}
+              value={
+                email
+              }
               onChange={(
                 event
               ) =>
@@ -690,7 +782,9 @@ export default function LoginPage() {
               }
               placeholder="••••••••"
               required
-              minLength={6}
+              minLength={
+                6
+              }
               autoComplete={
                 mode ===
                 "login"
@@ -699,6 +793,11 @@ export default function LoginPage() {
               }
             />
           </label>
+
+
+          {/* ================================================
+              OPÇÕES LOGIN
+             ================================================ */}
 
           {mode ===
             "login" && (
@@ -744,6 +843,11 @@ export default function LoginPage() {
             </div>
           )}
 
+
+          {/* ================================================
+              ERROS / SUCESSO
+             ================================================ */}
+
           {error && (
             <div
               className="auth-error"
@@ -760,6 +864,11 @@ export default function LoginPage() {
             </div>
           )}
 
+
+          {/* ================================================
+              ENTRAR / CADASTRAR
+             ================================================ */}
+
           <button
             type="submit"
             className="auth-submit"
@@ -774,7 +883,125 @@ export default function LoginPage() {
                 ? "Entrar"
                 : "Criar conta"}
           </button>
+
+
+          {/* ================================================
+              TESTE GRÁTIS
+             ================================================ */}
+
+          {mode ===
+            "login" && (
+            <div
+              style={{
+                marginTop:
+                  "8px",
+
+                display:
+                  "flex",
+
+                flexDirection:
+                  "column",
+
+                alignItems:
+                  "center",
+
+                gap:
+                  "10px",
+              }}
+            >
+              <span
+                style={{
+                  color:
+                    "#777781",
+
+                  fontSize:
+                    "13px",
+
+                  fontWeight:
+                    600,
+                }}
+              >
+                Ainda não é cliente?
+              </span>
+
+              <a
+                href={
+                  trialWhatsappUrl
+                }
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  width:
+                    "100%",
+
+                  minHeight:
+                    "52px",
+
+                  display:
+                    "flex",
+
+                  alignItems:
+                    "center",
+
+                  justifyContent:
+                    "center",
+
+                  borderRadius:
+                    "12px",
+
+                  border:
+                    "1px solid rgba(37, 211, 102, .30)",
+
+                  background:
+                    "rgba(37, 211, 102, .10)",
+
+                  color:
+                    "#54e58a",
+
+                  fontSize:
+                    "15px",
+
+                  fontWeight:
+                    800,
+
+                  textDecoration:
+                    "none",
+
+                  transition:
+                    "all .2s ease",
+
+                  boxSizing:
+                    "border-box",
+                }}
+              >
+                💬 Solicitar teste grátis
+              </a>
+
+              <small
+                style={{
+                  color:
+                    "#62626d",
+
+                  fontSize:
+                    "11px",
+
+                  textAlign:
+                    "center",
+
+                  lineHeight:
+                    1.45,
+                }}
+              >
+                Fale conosco pelo WhatsApp e solicite seu acesso por 24 horas.
+              </small>
+            </div>
+          )}
         </form>
+
+
+        {/* ==================================================
+            RODAPÉ
+           ================================================== */}
 
         <p
           className="auth-footer"
